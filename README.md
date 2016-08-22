@@ -24,7 +24,7 @@ Make sure RAVELLO_USERNAME and PEM_LOCATION are set in the setEnv.sh. PEM_LOCATI
 
 To use the script to create a Java 101 Canidate lab and associated user, you can run the script as follows:
 
-`createLab.sh -k /Users/tom.batchelor/Java_Lab.pem -p YourRavelloPassword -f Joe -l Bloggs -e dexterberkeley@me.com -v ThisIsTheVMPassword1`
+`createLab.sh -p YourRavelloPassword -f Joe -l Bloggs -e dexterberkeley@me.com -v ThisIsTheVMPassword1`
 
 Where the switches are as follows:
 
