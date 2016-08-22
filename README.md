@@ -16,19 +16,19 @@ These scripts are dependent on the [Ravello Python API](https://github.com/ravel
 	
 As creating users is not supported through the API as of August 17, 2016, Selenium and Firefox are also used. The Python Selenuim bindings can be installed with:
 
-	`pip install selenium`
+`pip install selenium`
 	
 # Usage
 
+Make sure RAVELLO_USERNAME and PEM_LOCATION are set in the setEnv.sh. PEM_LOCATION should point to the Beluprint access key.
+
 To use the script to create a Java 101 Canidate lab and associated user, you can run the script as follows:
 
-	`python labUtils.py  -u ravello.user@somedomain.com -p SomePassword -k /Users/tom.batchelor/Java_Lab.pem -f Joe -l Bloggs -e dexterberkeley@me.com -v ThisIsTheVMPassword1`
+`createLab.sh -k /Users/tom.batchelor/Java_Lab.pem -p YourRavelloPassword -f Joe -l Bloggs -e dexterberkeley@me.com -v ThisIsTheVMPassword1`
 
 Where the switches are as follows:
 
-* -u: Ravello user name (must be an admin)
 * -p: Ravello password
-* -k: Path to the PEM file for the Blueprint
 * -f: Candidate first name
 * -l: Candidate last name
 * -e: Candidate email
