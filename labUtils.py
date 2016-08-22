@@ -151,7 +151,7 @@ if userFirstName == None:
     shouldStop = True
 
 if userLastName == None:
-    print '-k not set for canidate last name'
+    print '-l not set for canidate last name'
     shouldStop = True
 
 if userEmail == None:
