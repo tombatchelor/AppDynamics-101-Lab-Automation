@@ -33,5 +33,5 @@ Where the switches are as follows:
 * -l: Candidate last name
 * -e: Candidate email
 
-This will create the Ravello application and then the user.
+This will create the Ravello application and then the user. Note this will also autoupdate these utilities from GitHub
 
