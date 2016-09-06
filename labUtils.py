@@ -214,6 +214,6 @@ createUserSelenium(ravelloUsername, ravelloPassword, userFirstName, userLastName
 # Print summary
 print 'Lab Created'
 print 'Application Name: ' + appName
-print 'Ravello password: ' + vmPassword
+print 'Ravello VM password: ' + vmPassword
 
 
