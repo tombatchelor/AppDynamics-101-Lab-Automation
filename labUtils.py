@@ -178,7 +178,7 @@ Java101BP = client.get_blueprint(blueprintID)
 # Use a standardized description for the app, this is use as part of clean up
 dateString = generate_standard_date_string()
 appDesc = 'Candidate application for: ' + userEmail + ' created on: ' + dateString
-appName = 'Candiate_TB_Java 101'
+appName = 'Candidate_' + userFirstName[0] + userLastName[0] + '_Java 101'
 
 # Create an app and publish it
 appName = appName + ' ' + dateString
