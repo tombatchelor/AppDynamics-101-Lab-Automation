@@ -9,4 +9,4 @@ curl https://raw.githubusercontent.com/tombatchelor/AppDynamics-101-Lab-Automati
 
 . `dirname $0`/setEnv.sh
 
-python labUtils.py -u $RAVELLO_USERNAME -p $RAVELLO_PASSWORD -k $PEM_LOCATION -o ravello -b 73401922 $@
+python labUtils.py -u $RAVELLO_USERNAME -k $PEM_LOCATION -o ravello -b 73401922 $@
