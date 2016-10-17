@@ -21,6 +21,7 @@ import subprocess
 import datetime
 import getopt
 import sys
+import csv
 
 def generate_standard_date_string():
     today = datetime.date.today()
@@ -34,23 +35,22 @@ def generate_standard_date_string():
     return dateString
 
 
-def run_remote_command(pemLocation, vmIP, remoteCommand):
-    subprocess.Popen('ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i ' + pemLocation + ' ravello@' + vmIP + ' -C "' + remoteCommand + '"', shell=True, stdout=subprocess.PIPE)
+def run_remote_command(pemLocation, vmIP, vmOSUser, remoteCommand):
+    subprocess.Popen('ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i ' + pemLocation + ' ' + vmOSUser + '@' + vmIP + ' -C "' + remoteCommand + '"', shell=True, stdout=subprocess.PIPE)
 
-def set_password_update_auth(pemLocation, vmIP, vmPassword):
+def set_password_update_auth(pemLocation, vmIP, vmOSUser, vmPassword):
     # Now set the password on the VM
-    remoteCommand = 'echo \'ravello:' + vmPassword + '\' | sudo chpasswd'
-    run_remote_command(pemLocation, vmIP, remoteCommand)
+    remoteCommand = 'echo \'' + vmOSUser + ':' + vmPassword + '\' | sudo chpasswd'
+    run_remote_command(pemLocation, vmIP, vmOSUser, remoteCommand)
 
     # Copy in sshd config file to allow password auth as blueprint process overwrites this
     remoteCommand = 'sudo cp /root/sshd_config /etc/ssh/sshd_config'
-    run_remote_command(pemLocation, vmIP, remoteCommand)
-    remoteCommand = 'sudo service sshd restart'
-    run_remote_command(pemLocation, vmIP, remoteCommand)
-
-    # Shutdown the VM
-    remoteCommand = 'sudo shutdown -h now'
-    run_remote_command(pemLocation, vmIP, remoteCommand)
+    run_remote_command(pemLocation, vmIP, vmOSUser, remoteCommand)
+    if vmOSUser == 'ubuntu':
+        remoteCommand = 'sudo service ssh restart'
+    else:
+        remoteCommand = 'sudo service sshd restart'
+    run_remote_command(pemLocation, vmIP, vmOSUser, remoteCommand)
 
 def build_user_dict(userFirstName, userLastName, userEmail):
     userDict = {}
@@ -96,6 +96,14 @@ def createUserSelenium(ravelloUsername, ravelloPassword, userFirstName, userLast
     elem.click()
     driver.close()
 
+# Constants
+
+usageString = ''' Single app usage:
+    python labUtils.sh -u <ravelloUsername> -p <ravelloPassword> -k <pemLocation> -f <firstName>  -l <lastName> -e <email> -v <vmPassword> -b <blueprintID> -o vmOSUser
+    Multi app usage:
+    python labUtils.sh -u <ravelloUsername> -p <ravelloPassword> -k <pemLocation> -a <attendeeFile> -b <blueprintID> -o vmOSUser -t appTimeout
+    '''
+
 # Params
 ravelloUsername = None
 ravelloPassword = None
@@ -104,18 +112,20 @@ vmPassword = None
 userFirstName = None
 userLastName = None
 userEmail = None
-
-blueprintID = 73401922
+blueprintID = None
+attendeeFile = None
+appTimeout = None
+vmOSUser = None
 
 # Parse out the arguments
 try:
-    opts, args = getopt.getopt(sys.argv[1:],'hu:p:k:f:l:e:v:',['username=','password=','pemKey=','firstName=','lastName=','email=','vmPassword='])
+    opts, args = getopt.getopt(sys.argv[1:],'hu:p:k:f:l:e:v:b:a:t:o:',['username=','password=','pemKey=','firstName=','lastName=','email=','vmPassword=','blueprint=','attendeeFile','appTimeout', 'vmOSUser'])
 except getopt.GetoptError:
-    print 'python labUtils.sh -u <ravelloUsername> -p <ravelloPassword> -k <pemLocation> -f <firstName>  -l <lastName> -e <email> -v <vmPassword>'
+    print usageString
     sys.exit(2)
 for opt, arg in opts:
     if opt == '-h':
-        print 'python labUtils.sh -u <ravelloUsername> -p <ravelloPassword> -k <pemLocation> -f <firstName>  -l <lastName> -e <email> -v <vmPassword>'
+        print usageString
         sys.exit(-1)
     elif opt in ('-u', '--username'):
         ravelloUsername = arg
@@ -131,6 +141,14 @@ for opt, arg in opts:
         userEmail = arg
     elif opt in ('-v', '--evmPassword'):
         vmPassword = arg
+    elif opt in ('-b', '--blueprint'):
+        blueprintID = arg
+    elif opt in ('-a', '--attendeeFile'):
+        attendeeFile = arg
+    elif opt in ('-t', '--appTimeout'):
+        appTimeout = arg
+    elif opt in ('-o', '--vmOSUser'):
+        vmOSUser = arg
 
 # Validate args
 shouldStop = False
@@ -146,74 +164,136 @@ if pemLocation == None:
     print '-k not set for pem location'
     shouldStop = True
 
-if userFirstName == None:
-    print '-f not set for canidate first name'
+if attendeeFile == None:
+    if userFirstName == None:
+        print '-f not set for canidate first name or attendee file not provided'
+        shouldStop = True
+
+    if userLastName == None:
+        print '-l not set for canidate last name or attendee file not provided'
+        shouldStop = True
+
+    if userEmail == None:
+        print '-e not set for canidate email or attendee file not provided'
+        shouldStop = True
+
+    if vmPassword == None:
+        print '-v not set for VM password or attendee file not provided'
+        shouldStop = True
+
+if blueprintID == None:
+    print '-b not set for Blueprint ID'
     shouldStop = True
 
-if userLastName == None:
-    print '-l not set for canidate last name'
-    shouldStop = True
-
-if userEmail == None:
-    print '-e not set for canidate email'
-    shouldStop = True
-
-if vmPassword == None:
-    print '-v not set for VM password'
+if vmOSUser == None:
+    print '-o not set for VM OS User'
     shouldStop = True
 
 if shouldStop:
-    print 'python labUtils.sh -u <ravelloUsername> -p <ravelloPassword> -k <pemLocation> -f <firstName>  -l <lastName> -e <email> -v <vmPassword>'
+    print usageString
     sys.exit(-1)
 
+userList = []
+
+if attendeeFile != None:
+    with open(attendeeFile, 'rb') as f:
+        reader = csv.reader(f)
+        tempList = list(reader)
+        for line in tempList:
+            user = {
+                     'userFirstName' : line[0],
+                     'userLastName' : line[1],
+                     'userEmail' : line[2],
+                     'vmPassword' : line[3]
+                     }
+            userList.append(user)
+else:
+    userList = [{
+                'userFirstName' : userFirstName,
+                'userLastName' : userLastName,
+                'userEmail' : userEmail,
+                'vmPassword' : vmPassword
+                }]
+
+print userList
 print "Starting app publish"
 
 # Login to Ravello
 client = RavelloClient()
 client.login(ravelloUsername, ravelloPassword)
 
-# Get the Java 101 BluePrint
-Java101BP = client.get_blueprint(blueprintID)
+# Get the BluePrint
+blueprint = client.get_blueprint(blueprintID)
 
-# Use a standardized description for the app, this is use as part of clean up
-dateString = generate_standard_date_string()
-appDesc = 'Candidate application for: ' + userEmail + ' created on: ' + dateString
-appName = 'Candidate_' + userFirstName[0] + userLastName[0] + '_Java 101'
+# Creata app and publish for each user in the userList
+for user in userList:
+    # Use a standardized description for the app, this is use as part of clean up
+    # Use legacy format for 101 lab
+    if "101" in blueprint['name']:
+        dateString = generate_standard_date_string()
+        appDesc = 'Candidate application for: ' + user['userEmail'] + ' created on: ' + dateString
+        appName = 'Candidate_' + user['userFirstName'][0] + user['userLastName'][0] + '_Java 101 ' + dateString
+    else:
+        appDesc = 'Auto created application for : ' + user['userEmail'] + ' from: ' + blueprint['name']
+        appName = blueprint['name'] + ' for: ' + user['userFirstName'] + ' ' + user['userLastName']
 
-# Create an app and publish it
-appName = appName + ' ' + dateString
-appDefinition = {'name': appName, 'baseBlueprintId': Java101BP['id'], 'description' : appDesc}
-app = client.create_application(appDefinition)
-client.publish_application(app['id'])
-client.set_application_expiration(app['id'], 1800)
+    # Create an app and publish it
+    user['appName'] = appName
+    appDefinition = {'name': appName, 'baseBlueprintId': blueprint['id'], 'description' : appDesc}
+    app = client.create_application(appDefinition)
+    client.publish_application(app['id'])
+    client.set_application_expiration(app['id'], 1800) # If a app timeout has been set, we take care of that later
+    user['appID'] = app['id']
 
-# Check for VM start
-app = client.get_application(app['id'])
-vm = app['deployment']['vms'][0]
-while vm['state'] != 'STARTED':
-    print vm['state']
-    time.sleep(30)
-    app = client.get_application(app['id'])
-    vm = app['deployment']['vms'][0]
-print vm['state']
+# Check for VM start for each VM in each app started
+for user in userList:
+    app = client.get_application(user['appID'])
+    vmCounter = 0 # There is probably a better way to manage this
+    for vm in app['deployment']['vms']:
+        while vm['state'] != 'STARTED':
+            print vm['state']
+            time.sleep(30)
+            app = client.get_application(user['appID'])
+            vm = app['deployment']['vms'][vmCounter]
+        print vm['state']
+        vmCounter = vmCounter + 1
 
-# It takes time for sshd to come up, so we're going to sleep
+# It takes time for sshd to come up on the VMs, so we're going to sleep
 # TB - 2016/07/17 - I should find a better way to do this
 time.sleep(60)
-vmIP = vm['networkConnections'][0]['ipConfig']['publicIp']
-print(vmIP)
 
-set_password_update_auth(pemLocation, vmIP, vmPassword)
+# Change passwords on the VMs
+for user in userList:
+    user['vmIPs'] = []
+    app = client.get_application(user['appID'])
+    for vm in app['deployment']['vms']:
+        vmIP = vm['networkConnections'][0]['ipConfig']['publicIp']
+        print(vmIP)
+        user['vmIPs'].append(vmIP)
+        set_password_update_auth(pemLocation, vmIP, vmOSUser, user['vmPassword'])
 
 print "App publish completed"
 
-# Now create User
-print "Creating ravello user"
-createUserSelenium(ravelloUsername, ravelloPassword, userFirstName, userLastName, userEmail)
+# Only create the Ravello user if we are doing a java 101 lab
+if "101" in blueprint['name']:
+    print "Creating ravello user"
+    createUserSelenium(ravelloUsername, ravelloPassword, user['userFirstName'], user['userLastName'], user['userEmail'])
+
+# Set timeout is set
+if appTimeout != None:
+    appTimeout = int(appTimeout)
+    appTimeout = appTimeout * 60 * 60
+    for user in userList:
+        client.set_application_expiration(user['appID'], appTimeout)
 
 # Print summary
-print 'Lab Created'
-print 'Application Name: ' + appName
-print 'Ravello VM password: ' + vmPassword
+print userList
+for user in userList:
+    print 'Lab Created'
+    print 'userEmail: ' + user['userEmail']
+    print 'Application Name: ' + user['appName']
+    print 'Ravello VM password: ' + user['vmPassword']
+    print 'IPs:'
+    print user['vmIPs']
 
 
