@@ -8,15 +8,19 @@ These scripts are dependent on the [Ravello Python API](https://github.com/ravel
 
 1. IF you do not have PIP installed, get that:
 
-	`sudo easy_install pip`
+		`sudo easy_install pip`
 
 2. Then install the Ravello API:
 
-	`sudo pip install ravello-sdk`
+		`sudo pip install ravello-sdk`
 	
 As creating users is not supported through the API as of August 17, 2016, Selenium and Firefox are used. The Python Selenuim bindings can be installed with:
 
-`pip install selenium`
+	`pip install selenium`
+
+If this fails on OS X, try this:
+
+	`sudo easy_install selenium`
 	
 # Usage
 
@@ -28,7 +32,7 @@ Make sure RAVELLO_USERNAME and PEM_LOCATION are set in the setEnv.sh. PEM_LOCATI
 
 To use the script to create a Java 101 Canidate lab and associated user, you can run the script as follows:
 
-`createLab.sh -p YourRavelloPassword -f Joe -l Bloggs -e dexterberkeley@me.com -v ThisIsTheVMPassword1`
+	`createLab.sh -p YourRavelloPassword -f Joe -l Bloggs -e dexterberkeley@me.com -v ThisIsTheVMPassword1`
 
 Where the switches are as follows:
 
@@ -51,7 +55,7 @@ An example is in sampleInput.csv
 
 A execution looks like the following
 
-`createHOL.sh -p YourRavelloPassword -b BlueprintID -a sampleInput.csv -o osUser -t timeout`
+	`createHOL.sh -p YourRavelloPassword -b BlueprintID -a sampleInput.csv -o osUser -t timeout`
 
 Where the switches are as follows:
 
