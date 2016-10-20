@@ -225,6 +225,10 @@ client.login(ravelloUsername, ravelloPassword)
 # Get the BluePrint
 blueprint = client.get_blueprint(blueprintID)
 
+if blueprint is None:
+    print "Blueprint with ID: " + blueprintID + " not found, exiting"
+    sys.exit(-2)
+
 # Creata app and publish for each user in the userList
 for user in userList:
     # Use a standardized description for the app, this is use as part of clean up
