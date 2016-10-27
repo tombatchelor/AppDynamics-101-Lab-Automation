@@ -264,7 +264,7 @@ for user in userList:
 
 # It takes time for sshd to come up on the VMs, so we're going to sleep
 # TB - 2016/07/17 - I should find a better way to do this
-time.sleep(60)
+time.sleep(150)
 
 # Change passwords on the VMs
 for user in userList:
