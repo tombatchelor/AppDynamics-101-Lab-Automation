@@ -46,6 +46,7 @@ def set_password_update_auth(pemLocation, vmIP, vmOSUser, vmPassword):
     # Copy in sshd config file to allow password auth as blueprint process overwrites this
     remoteCommand = 'sudo cp /root/sshd_config /etc/ssh/sshd_config'
     run_remote_command(pemLocation, vmIP, vmOSUser, remoteCommand)
+    time.sleep(3)
     if vmOSUser == 'ubuntu':
         remoteCommand = 'sudo service ssh restart'
     else:
@@ -299,5 +300,19 @@ for user in userList:
     print 'Ravello VM password: ' + user['vmPassword']
     print 'IPs:'
     print user['vmIPs']
+
+summaryReport = open('automation-output.csv', 'w')
+
+summaryReport.write("Email, Application, VM Username, Password, IPs\n");
+
+for user in userList:
+    summaryReport.write(
+        user['userEmail'] + ', ' +
+        user['appName'] + ', ' +
+        vmOSUser + ', ' +
+        user['vmPassword'] + ', ' +
+        user['vmIPs'][0] + '\n'
+)
+
 
 
