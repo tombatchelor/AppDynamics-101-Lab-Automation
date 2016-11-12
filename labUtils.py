@@ -306,12 +306,18 @@ summaryReport = open('automation-output.csv', 'w')
 summaryReport.write("Email, Application, VM Username, Password, IPs\n");
 
 for user in userList:
+    # for multi IP applications
+    vmIPstring = ''
+    for ip in user['vmIPs']:
+        vmIPstring = vmIPstring + ip
+        vmIPstring = vmIPstring + ' '
+    user['vmIPstring'] = vmIPstring
     summaryReport.write(
         user['userEmail'] + ', ' +
         user['appName'] + ', ' +
         vmOSUser + ', ' +
         user['vmPassword'] + ', ' +
-        user['vmIPs'][0] + '\n'
+        user['vmIPstring'] + '\n'
 )
 
 
