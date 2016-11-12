@@ -247,7 +247,7 @@ for user in userList:
     appDefinition = {'name': appName, 'baseBlueprintId': blueprint['id'], 'description' : appDesc}
     app = client.create_application(appDefinition)
     client.publish_application(app['id'])
-    client.set_application_expiration(app['id'], 1800) # If a app timeout has been set, we take care of that later
+    client.set_application_expiration(app['id'], 3600) # If a app timeout has been set, we take care of that later
     user['appID'] = app['id']
 
 # Check for VM start for each VM in each app started
@@ -275,7 +275,6 @@ for user in userList:
         vmIP = vm['networkConnections'][0]['ipConfig']['publicIp']
         print(vmIP)
         user['vmIPs'].append(vmIP)
-        set_password_update_auth(pemLocation, vmIP, vmOSUser, user['vmPassword'])
 
 print "App publish completed"
 
@@ -306,12 +305,18 @@ summaryReport = open('automation-output.csv', 'w')
 summaryReport.write("Email, Application, VM Username, Password, IPs\n");
 
 for user in userList:
+    # for multi IP applications
+    vmIPstring = ''
+    for ip in user['vmIPs']:
+        vmIPstring = vmIPstring + ip
+        vmIPstring = vmIPstring + ' '
+    user['vmIPstring'] = vmIPstring
     summaryReport.write(
         user['userEmail'] + ', ' +
         user['appName'] + ', ' +
         vmOSUser + ', ' +
         user['vmPassword'] + ', ' +
-        user['vmIPs'][0] + '\n'
+        user['vmIPstring'] + '\n'
 )
 
 

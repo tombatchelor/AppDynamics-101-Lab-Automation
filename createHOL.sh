@@ -4,8 +4,8 @@
 #
 
 # Make sure we have the latest versions
-curl https://raw.githubusercontent.com/tombatchelor/AppDynamics-101-Lab-Automation/master/createHOL.sh --output createHOL.sh
-curl https://raw.githubusercontent.com/tombatchelor/AppDynamics-101-Lab-Automation/master/labUtils.py --output labUtils.py
+#curl https://raw.githubusercontent.com/tombatchelor/AppDynamics-101-Lab-Automation/master/createHOL.sh --output createHOL.sh
+#curl https://raw.githubusercontent.com/tombatchelor/AppDynamics-101-Lab-Automation/master/labUtils.py --output labUtils.py
 
 . `dirname $0`/setEnv.sh
 
