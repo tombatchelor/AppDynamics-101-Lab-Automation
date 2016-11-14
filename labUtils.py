@@ -320,5 +320,14 @@ for user in userList:
         user['vmIPstring'] + '\n'
 )
 
+time.sleep(60)
+print('Restarting SSHD on VMs')
+for user in userList:
+    vmIPs = user['vmIPs']
+    for vmIP in vmIPs:
+        if vmOSUser == 'ubuntu':
+            remoteCommand = 'sudo service ssh restart'
+            run_remote_command(pemLocation, vmIP, vmOSUser, remoteCommand)
+print('Done with SSHD restart')
 
 
