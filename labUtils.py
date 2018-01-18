@@ -5,16 +5,13 @@
 ################################################################################
 # 2016-07-17 - 1 - Tom Batchelor - Initial release to support creating a Java 101 Lab Application
 #                        and a user
+# 2018-01-17 - 2 - Change to API based user creation and assiging app to that user
 #
 #
 ################################################################################
 
 
 from ravello_sdk import *
-from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
 import time
 import socket
 import subprocess
@@ -53,49 +50,13 @@ def set_password_update_auth(pemLocation, vmIP, vmOSUser, vmPassword):
         remoteCommand = 'sudo service sshd restart'
     run_remote_command(pemLocation, vmIP, vmOSUser, remoteCommand)
 
-def build_user_dict(userFirstName, userLastName, userEmail):
+def build_user_dict(firstName, lastName, email):
     userDict = {}
-    userDict['email'] = userEmail
-    userDict['name'] = userFirstName
-    userDict['surname'] = userLastName
+    userDict['email'] = email
+    userDict['name'] = firstName
+    userDict['surname'] = lastName
     userDict['roles'] = ['PROSPECTS']
     return userDict
-
-def createUserSelenium(ravelloUsername, ravelloPassword, userFirstName, userLastName, userEmail):
-    driver = webdriver.Firefox()
-    wait = WebDriverWait(driver, 60)
-
-    driver.get('https://login.ravellosystems.com/cas/login?service=https%3A%2F%2Fcloud.ravellosystems.com%2FloginSuccess%3Fservice%3DaHR0cHM6Ly9jbG91ZC5yYXZlbGxvc3lzdGVtcy5jb20v')
-    elem = driver.find_element_by_css_selector('#login-email')
-    elem.send_keys(ravelloUsername)
-    elem = driver.find_element_by_css_selector('#login-password')
-    elem.send_keys(ravelloPassword)
-    elem = driver.find_element_by_css_selector('#loginBtn')
-    elem.click()
-
-    elem = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, '#navigation-menu-admin')))
-    elem.click()
-    elem = driver.find_element_by_css_selector('#menu-goto-users-page > span > span')
-    elem.click()
-
-    elem = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, 'button.ravello-btn.main-btn')))
-    elem.click()
-
-    elem = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, '#first-name')))
-    elem.send_keys(userFirstName)
-    elem = driver.find_element_by_css_selector('#last-name')
-    elem.send_keys(userLastName)
-    elem = driver.find_element_by_css_selector('#email')
-    elem.send_keys(userEmail)
-    elem = driver.find_element_by_css_selector('a.ui-icon-delete')
-    elem.click()
-    elem = driver.find_element_by_css_selector('a.chosen-single.chosen-default')
-    elem.click()
-    elem = driver.find_element_by_css_selector('ul.chosen-results > li:nth-of-type(6)')
-    elem.click()
-    elem = driver.find_element_by_css_selector('#Invite-btn')
-    elem.click()
-    driver.close()
 
 # Constants
 
@@ -112,7 +73,7 @@ pemLocation = None
 vmPassword = None
 userFirstName = None
 userLastName = None
-userEmail = None
+email = None
 blueprintID = None
 attendeeFile = None
 appTimeout = None
@@ -135,11 +96,11 @@ for opt, arg in opts:
     elif opt in ('-k', '--pemKey'):
          pemLocation = arg
     elif opt in ('-f', '--firstName'):
-        userFirstName = arg
+        firstName = arg
     elif opt in ('-l', '--lastName'):
-        userLastName = arg
+        lastName = arg
     elif opt in ('-e', '--email'):
-        userEmail = arg
+        email = arg
     elif opt in ('-v', '--evmPassword'):
         vmPassword = arg
     elif opt in ('-b', '--blueprint'):
@@ -166,15 +127,15 @@ if pemLocation == None:
     shouldStop = True
 
 if attendeeFile == None:
-    if userFirstName == None:
+    if firstName == None:
         print '-f not set for canidate first name or attendee file not provided'
         shouldStop = True
 
-    if userLastName == None:
+    if lastName == None:
         print '-l not set for canidate last name or attendee file not provided'
         shouldStop = True
 
-    if userEmail == None:
+    if email == None:
         print '-e not set for canidate email or attendee file not provided'
         shouldStop = True
 
@@ -202,17 +163,17 @@ if attendeeFile != None:
         tempList = list(reader)
         for line in tempList:
             user = {
-                     'userFirstName' : line[0],
-                     'userLastName' : line[1],
-                     'userEmail' : line[2],
+                     'firstName' : line[0],
+                     'lastName' : line[1],
+                     'email' : line[2],
                      'vmPassword' : line[3]
                      }
             userList.append(user)
 else:
     userList = [{
-                'userFirstName' : userFirstName,
-                'userLastName' : userLastName,
-                'userEmail' : userEmail,
+                'firstName' : firstName,
+                'lastName' : lastName,
+                'email' : email,
                 'vmPassword' : vmPassword
                 }]
 
@@ -236,11 +197,11 @@ for user in userList:
     # Use legacy format for 101 lab
     if "101" in blueprint['name']:
         dateString = generate_standard_date_string()
-        appDesc = 'Candidate application for: ' + user['userEmail'] + ' created on: ' + dateString
-        appName = 'Candidate_' + user['userFirstName'][0] + user['userLastName'][0] + '_Java 101 ' + dateString
+        appDesc = 'Candidate application for: ' + user['email'] + ' created on: ' + dateString
+        appName = 'Candidate_' + user['firstName'][0] + user['lastName'][0] + '_Java 101 ' + dateString
     else:
-        appDesc = 'Auto created application for : ' + user['userEmail'] + ' from: ' + blueprint['name']
-        appName = blueprint['name'] + ' for: ' + user['userFirstName'] + ' ' + user['userLastName']
+        appDesc = 'Auto created application for : ' + user['email'] + ' from: ' + blueprint['name']
+        appName = blueprint['name'] + ' for: ' + user['firstName'] + ' ' + user['userLastName']
 
     # Create an app and publish it
     user['appName'] = appName
@@ -282,7 +243,15 @@ print "App publish completed"
 # Only create the Ravello user if we are doing a java 101 lab
 if "101" in blueprint['name']:
     print "Creating ravello user"
-    createUserSelenium(ravelloUsername, ravelloPassword, user['userFirstName'], user['userLastName'], user['userEmail'])
+    # create separate dict in the format ravello expects
+    # 1395864666559 is the ID of the Prospects2 group in Ravello
+    user['permissionGroupsSet']=['1395864666559']
+    user['userId'] = client.invite_user(user)['id']
+    # Assign our app to the new user
+    app = client.get_application(user['appID'])
+    app['ownerDetails']['userId'] = user['userId']
+    app['ownerDetails']['name'] = user['firstName'] + ' ' + user['lastName']
+    client.update_application(app)
 
 # Set timeout is set
 if appTimeout != None:
@@ -295,7 +264,7 @@ if appTimeout != None:
 print userList
 for user in userList:
     print 'Lab Created'
-    print 'userEmail: ' + user['userEmail']
+    print 'email: ' + user['email']
     print 'Application Name: ' + user['appName']
     print 'Ravello VM password: ' + user['vmPassword']
     print 'IPs:'
@@ -313,7 +282,7 @@ for user in userList:
         vmIPstring = vmIPstring + ' '
     user['vmIPstring'] = vmIPstring
     summaryReport.write(
-        user['userEmail'] + ', ' +
+        user['email'] + ', ' +
         user['appName'] + ', ' +
         vmOSUser + ', ' +
         user['vmPassword'] + ', ' +
