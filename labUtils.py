@@ -5,7 +5,7 @@
 ################################################################################
 # 2016-07-17 - 1 - Tom Batchelor - Initial release to support creating a Java 101 Lab Application
 #                        and a user
-# 2018-01-17 - 2 - Change to API based user creation and assiging app to that user
+# 2018-01-17 - 2 - Change to ephemeral access tokens
 #
 #
 ################################################################################
@@ -30,7 +30,6 @@ def generate_standard_date_string():
         dateString = dateString + str(month)
     dateString = dateString + str(today.day)
     return dateString
-
 
 def run_remote_command(pemLocation, vmIP, vmOSUser, remoteCommand):
     subprocess.Popen('ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i ' + pemLocation + ' ' + vmOSUser + '@' + vmIP + ' -C "' + remoteCommand + '"', shell=True, stdout=subprocess.PIPE)
@@ -58,6 +57,12 @@ def build_user_dict(firstName, lastName, email):
     userDict['roles'] = ['PROSPECTS']
     return userDict
 
+def getExpiryTimestamp():
+    currTimeMillis = int(time.time()) * 1000
+    # Add on a week
+    weekMillis = 60 * 60 * 24 * 7 * 1000
+    return currTimeMillis + weekMillis
+
 # Constants
 
 usageString = ''' Single app usage:
@@ -65,6 +70,33 @@ usageString = ''' Single app usage:
     Multi app usage:
     python labUtils.sh -u <ravelloUsername> -p <ravelloPassword> -k <pemLocation> -a <attendeeFile> -b <blueprintID> -o vmOSUser -t appTimeout
     '''
+
+#template
+ephemeralToken = {'description': 'bob',
+'expirationTime': 1516488864831,
+'permissions':
+    [
+     {
+     'resourceType': 'APPLICATION',
+     'filterCriterion': {
+     'operator': 'Or',
+     'type': 'COMPLEX',
+     'criteria':
+     [
+      {
+      'index': 1,
+      'propertyName': 'ID',
+      'operand': '3125662683471',
+      'operator': 'Equals',
+      'type': 'SIMPLE'}
+      ]
+     },
+     'actions': [
+                 'EXECUTE', 'READ'
+                 ]
+     }
+     ],
+'name': 'bobq'}
 
 # Params
 ravelloUsername = None
@@ -240,18 +272,15 @@ for user in userList:
 
 print "App publish completed"
 
-# Only create the Ravello user if we are doing a java 101 lab
+# Only create the Access Token if we are doing a java 101 lab
 if "101" in blueprint['name']:
-    print "Creating ravello user"
-    # create separate dict in the format ravello expects
-    # 1395864666559 is the ID of the Prospects2 group in Ravello
-    user['permissionGroupsSet']=['1395864666559']
-    user['userId'] = client.invite_user(user)['id']
-    # Assign our app to the new user
-    app = client.get_application(user['appID'])
-    app['ownerDetails']['userId'] = user['userId']
-    app['ownerDetails']['name'] = user['firstName'] + ' ' + user['lastName']
-    client.update_application(app)
+    print "Creating access Token"
+    ephemeralToken['expirationTime'] = getExpiryTimestamp()
+    ephemeralToken['name'] = 'Token for: ' + user['appName']
+    ephemeralToken['description'] = 'Token for: ' + user['appName']
+    ephemeralToken['permissions'][0]['filterCriterion']['criteria'][0]['operand'] = user['appID']
+    user['tokenID'] = client.create_ephemeral_access_token(ephemeralToken)['token']
+
 
 # Set timeout is set
 if appTimeout != None:
@@ -260,13 +289,23 @@ if appTimeout != None:
     for user in userList:
         client.set_application_expiration(user['appID'], appTimeout)
 
+time.sleep(60)
+print('Restarting SSHD on VMs')
+for user in userList:
+    vmIPs = user['vmIPs']
+    for vmIP in vmIPs:
+        if vmOSUser == 'ubuntu':
+            remoteCommand = 'sudo service ssh restart'
+            run_remote_command(pemLocation, vmIP, vmOSUser, remoteCommand)
+print('Done with SSHD restart')
+
 # Print summary
 print userList
 for user in userList:
     print 'Lab Created'
-    print 'email: ' + user['email']
     print 'Application Name: ' + user['appName']
     print 'Ravello VM password: ' + user['vmPassword']
+    print 'Access URL: https://cloud.ravellosystems.com/#/' + user['tokenID']
     print 'IPs:'
     print user['vmIPs']
 
@@ -289,14 +328,5 @@ for user in userList:
         user['vmIPstring'] + '\n'
 )
 
-time.sleep(60)
-print('Restarting SSHD on VMs')
-for user in userList:
-    vmIPs = user['vmIPs']
-    for vmIP in vmIPs:
-        if vmOSUser == 'ubuntu':
-            remoteCommand = 'sudo service ssh restart'
-            run_remote_command(pemLocation, vmIP, vmOSUser, remoteCommand)
-print('Done with SSHD restart')
 
 
