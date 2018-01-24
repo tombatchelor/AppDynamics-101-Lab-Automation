@@ -6,7 +6,7 @@ This project contains code to automate some processes in Ravello. While this has
 
 These scripts are dependent on the [Ravello Python API](https://github.com/ravello/python-sdk). This can be installed locally using PIP (steps below have been tested on OS X):
 
-1. IF you do not have PIP installed, get that:
+1. If you do not have PIP installed, get that:
 
 		sudo easy_install pip
 
