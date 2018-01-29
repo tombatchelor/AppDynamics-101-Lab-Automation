@@ -57,11 +57,20 @@ def build_user_dict(firstName, lastName, email):
     userDict['roles'] = ['PROSPECTS']
     return userDict
 
+def getCurrentTimestamp():
+    return int(time.time()) * 1000
+
 def getExpiryTimestamp():
-    currTimeMillis = int(time.time()) * 1000
+    currTimeMillis = getCurrentTimestamp()
     # Add on a week
     weekMillis = 60 * 60 * 24 * 7 * 1000
     return currTimeMillis + weekMillis
+
+def getMaxExpiryTimestamp():
+    currTimeMillis = getCurrentTimestamp()
+    weekMillis = 60 * 60 * 24 * 7 * 1000
+    # Use 2 weeks after expiry before clean up
+    return currTimeMillis - (weekMillis * 2)
 
 # Constants
 
@@ -298,6 +307,16 @@ for user in userList:
             remoteCommand = 'sudo service ssh restart'
             run_remote_command(pemLocation, vmIP, vmOSUser, remoteCommand)
 print('Done with SSHD restart')
+
+# Clean up old apps
+print 'Cleaning up old apps'
+tokens = client.client.get_ephemeral_access_tokens()
+for token in tokens:
+    if token['name'].startswith('Token for: Candidate'):
+        if token['expirationTime'] < getMaxExpiryTimestamp():
+            # The magic below gets the application ID from the ephemaral token, and then deletes is
+            client.delete_application(token['permissions'][0]['filterCriterion']['criteria'][0]['operand'])
+            client.delete_ephemeral_access_token(token['id'])
 
 # Print summary
 print userList
