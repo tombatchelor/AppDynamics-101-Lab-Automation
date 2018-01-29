@@ -310,13 +310,14 @@ print('Done with SSHD restart')
 
 # Clean up old apps
 print 'Cleaning up old apps'
-tokens = client.client.get_ephemeral_access_tokens()
+tokens = client.get_ephemeral_access_tokens()
 for token in tokens:
     if token['name'].startswith('Token for: Candidate'):
         if token['expirationTime'] < getMaxExpiryTimestamp():
             # The magic below gets the application ID from the ephemaral token, and then deletes is
-            client.delete_application(token['permissions'][0]['filterCriterion']['criteria'][0]['operand'])
-            client.delete_ephemeral_access_token(token['id'])
+            print 'Deleting App and Token for: ' + token['name']
+            #client.delete_application(token['permissions'][0]['filterCriterion']['criteria'][0]['operand'])
+            #client.delete_ephemeral_access_token(token['id'])
 
 # Print summary
 print userList
