@@ -70,7 +70,7 @@ def getMaxExpiryTimestamp():
     currTimeMillis = getCurrentTimestamp()
     weekMillis = 60 * 60 * 24 * 7 * 1000
     # Use 2 weeks after expiry before clean up
-    return currTimeMillis # - (weekMillis * 2)
+    return currTimeMillis - (weekMillis * 2)
 
 def getAppIDs(client):
     apps = client.get_applications()
