@@ -6,7 +6,7 @@ This project contains code to automate some processes in Ravello. While this has
 
 These scripts are dependent on the [Ravello Python API](https://github.com/ravello/python-sdk). This can be installed locally using PIP (steps below have been tested on OS X):
 
-1. IF you do not have PIP installed, get that:
+1. If you do not have PIP installed, get that:
 
 		sudo easy_install pip
 
@@ -14,13 +14,7 @@ These scripts are dependent on the [Ravello Python API](https://github.com/ravel
 
 		sudo pip install ravello-sdk
 	
-As creating users is not supported through the API as of August 17, 2016, Selenium and Firefox are used. The Python Selenuim bindings can be installed with:
-
-	pip install selenium
-
-If this fails on OS X, try this:
-
-	sudo easy_install selenium
+Note prior versions of this script performed user creation using Selenium, this has removed in favour of ephemeral access keys
 	
 # Usage
 
@@ -41,7 +35,18 @@ Where the switches are as follows:
 * -l: Candidate last name
 * -e: Candidate email
 
-This will create the Ravello application and then the user. Note this will also autoupdate these utilities from GitHub
+This will create the Ravello application and then the ephemeral access key. Final output looks as follows with the App Name, VM Password and Ephemeral Access URL:
+
+~~~
+Lab Created
+Application Name: Candidate_TB_Java 101 20180123
+Ravello VM password: Hello1234
+Access URL: https://cloud.ravellosystems.com/#/AzqCZddlkgjwefqdqsPewBjXo2DC81GSMJkykJBhL9zv23gjeab2F
+IPs:
+[u'129.213.54.115']
+~~~
+
+Note this will also autoupdate these utilities from GitHub
 
 ## AppDynamics AppSphere Hand On Lab
 
