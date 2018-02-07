@@ -155,7 +155,7 @@ for opt, arg in opts:
     elif opt in ('-v', '--evmPassword'):
         vmPassword = arg
     elif opt in ('-b', '--blueprint'):
-        blueprintID = arg
+        blueprintID = arg.strip()
     elif opt in ('-a', '--attendeeFile'):
         attendeeFile = arg
     elif opt in ('-t', '--appTimeout'):
@@ -240,6 +240,10 @@ blueprint = client.get_blueprint(blueprintID)
 
 if blueprint is None:
     print "Blueprint with ID: " + blueprintID + " not found, exiting"
+    sys.exit(-2)
+
+if 'DO_NOT_USE' in blueprint['name']:
+    print('Using a DO_NOT_USE Blueprint, auto-update fixed this, please run again')
     sys.exit(-2)
 
 # Creata app and publish for each user in the userList
