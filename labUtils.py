@@ -136,7 +136,7 @@ for opt, arg in opts:
     elif opt in ('-v', '--evmPassword'):
         vmPassword = arg
     elif opt in ('-b', '--blueprint'):
-        blueprintID = arg
+        blueprintID = arg.strip()
     elif opt in ('-a', '--attendeeFile'):
         attendeeFile = arg
     elif opt in ('-t', '--appTimeout'):
