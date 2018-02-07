@@ -213,7 +213,7 @@ print userList
 print "Starting app publish"
 
 # Check BP ID, if using broken 101 Blueprint, bomb out.
-if blueprintID == 73401922:
+if blueprintID == '73401922':
     print('Using old Java 101 Blueprint, auto-update fixed this, please run again')
     sys.exit(-2)
 
