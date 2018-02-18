@@ -1,4 +1,4 @@
 setEnv.sh
 setEnvLocal.sh
-automation-output.csv
+automation-output*.csv
 *.log
