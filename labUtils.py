@@ -21,15 +21,7 @@ import sys
 import csv
 
 def generate_standard_date_string():
-    today = datetime.date.today()
-    dateString = str(today.year)
-    month = today.month
-    if month < 10:
-        dateString = dateString + '0' + str(month)
-    else:
-        dateString = dateString + str(month)
-    dateString = dateString + str(today.day)
-    return dateString
+    return datetime.datetime.now().strftime("%Y%m%d%H%M%S")
 
 def run_remote_command(pemLocation, vmIP, vmOSUser, remoteCommand):
     subprocess.Popen('ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i ' + pemLocation + ' ' + vmOSUser + '@' + vmIP + ' -C "' + remoteCommand + '"', shell=True, stdout=subprocess.PIPE)
@@ -337,9 +329,9 @@ for token in tokens:
             appID = int(token['permissions'][0]['filterCriterion']['criteria'][0]['operand'])
             if appExists(appIDs, appID):
                 print 'Deleting application: ' + str(appID)
-                #client.delete_application(appID)
+                client.delete_application(appID)
             print 'Deleting token: '  + token['name']
-            #client.delete_ephemeral_access_token(token['id'])
+            client.delete_ephemeral_access_token(token['id'])
 
 # Print summary
 print userList
@@ -353,7 +345,7 @@ for user in userList:
     print user['vmIPs']
 
 # Output summary report
-summaryReport = open('automation-output.csv', 'w')
+summaryReport = open('automation-output-' + generate_standard_date_string() + '.csv', 'w')
 summaryReport.write("Email, Application, VM Username, Password, Access URL, IPs\n");
 for user in userList:
     # for multi IP applications
