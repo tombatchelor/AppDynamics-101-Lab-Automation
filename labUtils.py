@@ -6,7 +6,7 @@
 # 2016-07-17 - 1 - Tom Batchelor - Initial release to support creating a Java 101 Lab Application
 #                        and a user
 # 2018-01-17 - 2 - Change to ephemeral access tokens
-#
+# 2018-01-29 - 3 - Added auto-cleanup and 101 provisioning using CSV
 #
 ################################################################################
 
@@ -21,15 +21,7 @@ import sys
 import csv
 
 def generate_standard_date_string():
-    today = datetime.date.today()
-    dateString = str(today.year)
-    month = today.month
-    if month < 10:
-        dateString = dateString + '0' + str(month)
-    else:
-        dateString = dateString + str(month)
-    dateString = dateString + str(today.day)
-    return dateString
+    return datetime.datetime.now().strftime("%Y%m%d%H%M%S")
 
 def run_remote_command(pemLocation, vmIP, vmOSUser, remoteCommand):
     subprocess.Popen('ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i ' + pemLocation + ' ' + vmOSUser + '@' + vmIP + ' -C "' + remoteCommand + '"', shell=True, stdout=subprocess.PIPE)
@@ -57,18 +49,37 @@ def build_user_dict(firstName, lastName, email):
     userDict['roles'] = ['PROSPECTS']
     return userDict
 
+def getCurrentTimestamp():
+    return int(time.time()) * 1000
+
 def getExpiryTimestamp():
-    currTimeMillis = int(time.time()) * 1000
+    currTimeMillis = getCurrentTimestamp()
     # Add on a week
     weekMillis = 60 * 60 * 24 * 7 * 1000
     return currTimeMillis + weekMillis
 
+def getMaxExpiryTimestamp():
+    currTimeMillis = getCurrentTimestamp()
+    weekMillis = 60 * 60 * 24 * 7 * 1000
+    # Use 2 weeks after expiry before clean up
+    return currTimeMillis - (weekMillis * 2)
+
+def getAppIDs(client):
+    apps = client.get_applications()
+    appIDs = []
+    for app in apps:
+        appIDs.append(app['id'])
+    return appIDs
+
+def appExists(appIDs, appID):
+    return appID in appIDs
+
 # Constants
 
 usageString = ''' Single app usage:
-    python labUtils.sh -u <ravelloUsername> -p <ravelloPassword> -k <pemLocation> -f <firstName>  -l <lastName> -e <email> -v <vmPassword> -b <blueprintID> -o vmOSUser
+    python labUtils.sh -u <ravelloUsername> -p <ravelloPassword> -d <identityDomain> -k <pemLocation> -f <firstName>  -l <lastName> -e <email> -v <vmPassword> -b <blueprintID> -o <vmOSUser>
     Multi app usage:
-    python labUtils.sh -u <ravelloUsername> -p <ravelloPassword> -k <pemLocation> -a <attendeeFile> -b <blueprintID> -o vmOSUser -t appTimeout
+    python labUtils.sh -u <ravelloUsername> -p <ravelloPassword> -d <identityDomain> -k <pemLocation> -a <attendeeFile> -b <blueprintID> -o <vmOSUser> -t <appTimeout>
     '''
 
 #template
@@ -110,10 +121,11 @@ blueprintID = None
 attendeeFile = None
 appTimeout = None
 vmOSUser = None
+identityDomain = None
 
 # Parse out the arguments
 try:
-    opts, args = getopt.getopt(sys.argv[1:],'hu:p:k:f:l:e:v:b:a:t:o:',['username=','password=','pemKey=','firstName=','lastName=','email=','vmPassword=','blueprint=','attendeeFile','appTimeout', 'vmOSUser'])
+    opts, args = getopt.getopt(sys.argv[1:],'hu:p:k:f:l:e:v:b:a:t:o:d:',['username=','password=','pemKey=','firstName=','lastName=','email=','vmPassword=','blueprint=','attendeeFile','appTimeout', 'vmOSUser', 'identityDomain'])
 except getopt.GetoptError:
     print usageString
     sys.exit(2)
@@ -143,6 +155,8 @@ for opt, arg in opts:
         appTimeout = arg
     elif opt in ('-o', '--vmOSUser'):
         vmOSUser = arg
+    elif opt in ('-d', '--identityDomain'):
+        identityDomain = arg
 
 # Validate args
 shouldStop = False
@@ -183,6 +197,10 @@ if vmOSUser == None:
     print '-o not set for VM OS User'
     shouldStop = True
 
+if identityDomain == None:
+    print '-d not set for Identity Domain'
+    shouldStop = True
+
 if shouldStop:
     print usageString
     sys.exit(-1)
@@ -214,7 +232,7 @@ print "Starting app publish"
 
 # Login to Ravello
 client = RavelloClient()
-client.login(ravelloUsername, ravelloPassword)
+client.login(identityDomain + '/' + ravelloUsername, ravelloPassword)
 
 # Get the BluePrint
 blueprint = client.get_blueprint(blueprintID)
@@ -229,7 +247,7 @@ if 'DO_NOT_USE' in blueprint['name']:
 
 # Creata app and publish for each user in the userList
 for user in userList:
-    # Use a standardized description for the app, this is use as part of clean up
+    # Use a standardized description for the app
     # Use legacy format for 101 lab
     if "101" in blueprint['name']:
         dateString = generate_standard_date_string()
@@ -264,7 +282,7 @@ for user in userList:
 # TB - 2016/07/17 - I should find a better way to do this
 time.sleep(150)
 
-# Change passwords on the VMs
+# Change passwords on the VMs and turn on password auth
 for user in userList:
     user['vmIPs'] = []
     app = client.get_application(user['appID'])
@@ -279,21 +297,26 @@ print "App publish completed"
 # Only create the Access Token if we are doing a java 101 lab
 if "101" in blueprint['name']:
     print "Creating access Token"
-    ephemeralToken['expirationTime'] = getExpiryTimestamp()
-    ephemeralToken['name'] = 'Token for: ' + user['appName']
-    ephemeralToken['description'] = 'Token for: ' + user['appName']
-    ephemeralToken['permissions'][0]['filterCriterion']['criteria'][0]['operand'] = user['appID']
-    user['tokenID'] = client.create_ephemeral_access_token(ephemeralToken)['token']
+    for user in userList:
+        ephemeralToken['expirationTime'] = getExpiryTimestamp()
+        ephemeralToken['name'] = 'Token for: ' + user['appName']
+        ephemeralToken['description'] = 'Token for: ' + user['appName']
+        ephemeralToken['permissions'][0]['filterCriterion']['criteria'][0]['operand'] = user['appID']
+        user['tokenID'] = client.create_ephemeral_access_token(ephemeralToken)['token']
+else:
+    for user in userList:
+        user['tokenID'] = 'NO TOKEN CREATED'
 
-
-# Set timeout is set
+# Set timeout if set
 if appTimeout != None:
     appTimeout = int(appTimeout)
     appTimeout = appTimeout * 60 * 60
     for user in userList:
         client.set_application_expiration(user['appID'], appTimeout)
 
+# Another sleep which could be fixed a better way - TB
 time.sleep(60)
+# Restart SSHD on the VMs to pickup the password auth oonfig change
 print('Restarting SSHD on VMs')
 for user in userList:
     vmIPs = user['vmIPs']
@@ -303,20 +326,34 @@ for user in userList:
             run_remote_command(pemLocation, vmIP, vmOSUser, remoteCommand)
 print('Done with SSHD restart')
 
+# Clean up old apps
+print 'Cleaning up old apps'
+tokens = client.get_ephemeral_access_tokens()
+appIDs = getAppIDs(client)
+for token in tokens:
+    if token['name'].startswith('Token for: Candidate'):
+        if token['expirationTime'] < getMaxExpiryTimestamp():
+            appID = int(token['permissions'][0]['filterCriterion']['criteria'][0]['operand'])
+            if appExists(appIDs, appID):
+                print 'Deleting application: ' + str(appID)
+                client.delete_application(appID)
+            print 'Deleting token: '  + token['name']
+            client.delete_ephemeral_access_token(token['id'])
+
 # Print summary
 print userList
 for user in userList:
     print 'Lab Created'
     print 'Application Name: ' + user['appName']
     print 'Ravello VM password: ' + user['vmPassword']
-    print 'Access URL: https://cloud.ravellosystems.com/#/' + user['tokenID']
+    if 'tokenID' in user:
+        print 'Access URL: https://cloud.ravellosystems.com/#/' + user['tokenID']
     print 'IPs:'
     print user['vmIPs']
 
-summaryReport = open('automation-output.csv', 'w')
-
-summaryReport.write("Email, Application, VM Username, Password, IPs\n");
-
+# Output summary report
+summaryReport = open('automation-output-' + generate_standard_date_string() + '.csv', 'w')
+summaryReport.write("Email, Application, VM Username, Password, Access URL, IPs\n");
 for user in userList:
     # for multi IP applications
     vmIPstring = ''
@@ -329,8 +366,9 @@ for user in userList:
         user['appName'] + ', ' +
         vmOSUser + ', ' +
         user['vmPassword'] + ', ' +
+        'Access URL: https://cloud.ravellosystems.com/#/' + user['tokenID'] + ',' +
         user['vmIPstring'] + '\n'
-)
+    )
 
 
 
