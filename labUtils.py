@@ -77,9 +77,9 @@ def appExists(appIDs, appID):
 # Constants
 
 usageString = ''' Single app usage:
-    python labUtils.sh -u <ravelloUsername> -p <ravelloPassword> -k <pemLocation> -f <firstName>  -l <lastName> -e <email> -v <vmPassword> -b <blueprintID> -o vmOSUser
+    python labUtils.sh -u <ravelloUsername> -p <ravelloPassword> -d <identityDomain> -k <pemLocation> -f <firstName>  -l <lastName> -e <email> -v <vmPassword> -b <blueprintID> -o <vmOSUser>
     Multi app usage:
-    python labUtils.sh -u <ravelloUsername> -p <ravelloPassword> -k <pemLocation> -a <attendeeFile> -b <blueprintID> -o vmOSUser -t appTimeout
+    python labUtils.sh -u <ravelloUsername> -p <ravelloPassword> -d <identityDomain> -k <pemLocation> -a <attendeeFile> -b <blueprintID> -o <vmOSUser> -t <appTimeout>
     '''
 
 #template
@@ -121,10 +121,11 @@ blueprintID = None
 attendeeFile = None
 appTimeout = None
 vmOSUser = None
+identityDomain = None
 
 # Parse out the arguments
 try:
-    opts, args = getopt.getopt(sys.argv[1:],'hu:p:k:f:l:e:v:b:a:t:o:',['username=','password=','pemKey=','firstName=','lastName=','email=','vmPassword=','blueprint=','attendeeFile','appTimeout', 'vmOSUser'])
+    opts, args = getopt.getopt(sys.argv[1:],'hu:p:k:f:l:e:v:b:a:t:o:d:',['username=','password=','pemKey=','firstName=','lastName=','email=','vmPassword=','blueprint=','attendeeFile','appTimeout', 'vmOSUser', 'identityDomain'])
 except getopt.GetoptError:
     print usageString
     sys.exit(2)
@@ -154,6 +155,8 @@ for opt, arg in opts:
         appTimeout = arg
     elif opt in ('-o', '--vmOSUser'):
         vmOSUser = arg
+    elif opt in ('-d', '--identityDomain'):
+        identityDomain = arg
 
 # Validate args
 shouldStop = False
@@ -194,6 +197,10 @@ if vmOSUser == None:
     print '-o not set for VM OS User'
     shouldStop = True
 
+if identityDomain == None:
+    print '-d not set for Identity Domain'
+    shouldStop = True
+
 if shouldStop:
     print usageString
     sys.exit(-1)
@@ -225,7 +232,7 @@ print "Starting app publish"
 
 # Login to Ravello
 client = RavelloClient()
-client.login(ravelloUsername, ravelloPassword)
+client.login(identityDomain + '/' + ravelloUsername, ravelloPassword)
 
 # Get the BluePrint
 blueprint = client.get_blueprint(blueprintID)
