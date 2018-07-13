@@ -333,10 +333,11 @@ appIDs = getAppIDs(client)
 for token in tokens:
     if token['name'].startswith('Token for: Candidate'):
         if token['expirationTime'] < getMaxExpiryTimestamp():
-            appID = int(token['permissions'][0]['filterCriterion']['criteria'][0]['operand'])
-            if appExists(appIDs, appID):
-                print 'Deleting application: ' + str(appID)
-                client.delete_application(appID)
+            if 'permissions' in token.keys():
+                appID = int(token['permissions'][0]['filterCriterion']['criteria'][0]['operand'])
+                if appExists(appIDs, appID):
+                    print 'Deleting application: ' + str(appID)
+                    client.delete_application(appID)
             print 'Deleting token: '  + token['name']
             client.delete_ephemeral_access_token(token['id'])
 
